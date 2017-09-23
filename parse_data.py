@@ -95,16 +95,38 @@ for c in df_test.columns:
 
 # We will now drop the features that serve no useful purpose. We will also split our data and divide it into the representation to make it clear which features are to be treated as determinants in predicting the outcome for our target feature. Make sure to include the same features in the test set as were included in the training set #
 
+toDrop = set()
+
 for c in df_train.columns:
-    Empty = df_train[c].count(-1)
-    print Empty
+    Empty = df_train[c]
+    countOfEmpty = (Empty==-1).sum()
+    total = len(Empty)
+    if(count/total >= 0.8):
+        toDrop.add(c)
 
-x_train = df_train.drop(['parcelid', 'logerror', 'transactiondate', 'propertyzoningdesc',
-                         'propertycountylandusecode', ], axis=1)
+toDrop.add('parcelid')
+toDrop.add('logerror')
+toDrop.add('transactiondate')
+toDrop.add('propertyzoningdesc')
+toDrop.add('propertycountylandusecode')
 
-x_test = df_test.drop(['parcelid', 'propertyzoningdesc',
-                       'propertycountylandusecode', '201610', '201611',
-                       '201612', '201710', '201711', '201712'], axis = 1)
+toDropList = []
+
+for each in toDrop:
+    toDropList.append(each)
+
+x_train = df_train.drop(toDropList, axis=1)
+
+toDropList.append('201610')
+toDropList.append('201611')
+toDropList.append('201612')
+toDropList.append('201710')
+toDropList.append('201711')
+toDropList.append('201712')
+toDropList.remove('logerror')
+toDropList.remove('transactiondata')
+
+x_test = df_test.drop(toDropList, axis = 1)
 
 x_train = x_train.values
 y_train = df_train['logerror'].values
