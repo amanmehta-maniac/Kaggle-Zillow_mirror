@@ -12,7 +12,7 @@ import gc
  #Note that these datasets are the ones that are already provided once
  # you enter the competition by accepting terms and conditions
 
-train = pd.read_csv('../train_2016_v2.csv' , parse_dates=["transactiondate"]) 
+train = pd.read_csv('../train_2016_v2.csv' , parse_dates=["transactiondate"])
 properties = pd.read_csv('../properties_2016.csv')
 test = pd.read_csv('../sample_submission.csv')
 test= test.rename(columns={'ParcelId': 'parcelid'}) #To make it easier for merging datasets on same column_id later
@@ -80,7 +80,7 @@ from sklearn.preprocessing import LabelEncoder
 
 lbl = LabelEncoder()
 for c in df_train.columns:
-    df_train[c]=df_train[c].fillna(0)
+    df_train[c]=df_train[c].fillna(-1)
     if df_train[c].dtype == 'object':
         lbl.fit(list(df_train[c].values))
         df_train[c] = lbl.transform(list(df_train[c].values))
@@ -94,6 +94,10 @@ for c in df_test.columns:
 ### Rearranging the DataSets ###
 
 # We will now drop the features that serve no useful purpose. We will also split our data and divide it into the representation to make it clear which features are to be treated as determinants in predicting the outcome for our target feature. Make sure to include the same features in the test set as were included in the training set #
+
+for c in df_train.columns:
+    Empty = df_train[c].count(-1)
+    print Empty
 
 x_train = df_train.drop(['parcelid', 'logerror', 'transactiondate', 'propertyzoningdesc',
                          'propertycountylandusecode', ], axis=1)
