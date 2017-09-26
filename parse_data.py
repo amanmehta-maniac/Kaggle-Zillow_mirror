@@ -5,7 +5,7 @@ import xgboost as  xgb
 import random
 import datetime as dt
 import gc
-
+import copy
  #Load the Datasets #
 
      # We need to load the datasets that will be needed to train our machine learning algorithms, handle our data and make predictions.
@@ -58,6 +58,7 @@ properties['value_prop'] = properties['structuretaxvaluedollarcnt'] / properties
 df_train = train.merge(properties, how='left', on='parcelid')
 df_test = test.merge(properties, how='left', on='parcelid')
 
+df_train['month'] = df_train['transactiondate'].dt.month
 
 ### Remove previos variables to keep some memory
 del properties, train
@@ -91,25 +92,28 @@ for c in df_test.columns:
         lbl.fit(list(df_test[c].values))
         df_test[c] = lbl.transform(list(df_test[c].values))
 
+
+df_train = df_train.replace(-1,0)
+df_test = df_test.replace(-1,0)
 ### Rearranging the DataSets ###
 
 # We will now drop the features that serve no useful purpose. We will also split our data and divide it into the representation to make it clear which features are to be treated as determinants in predicting the outcome for our target feature. Make sure to include the same features in the test set as were included in the training set #
 
 toDrop = set()
 
+countOfEmpty=0
 for c in df_train.columns:
-    print c
     Empty = df_train[c]
     if df_train[c].dtype!='datetime64[ns]':
     	countOfEmpty = (Empty==-1).sum()
-    total = len(Empty)
-<<<<<<< HEAD
-    if(count/total >= 0.8):
-        print "Dropping It"
-=======
-    if(countOfEmpty/total >= 0.8):
->>>>>>> a999ef6a6577a45cb6ebab033f6399f23c2fbc46
+    else:
+	countOfEmpty = 0
+    if(countOfEmpty >= 20000):
         toDrop.add(c)
+
+print "Printing the elements to be dropped"
+for each in toDrop:
+    print each
 
 toDrop.add('parcelid')
 toDrop.add('logerror')
@@ -151,14 +155,32 @@ y = y_train
 
 Xtrain, Xvalid, ytrain, yvalid = train_test_split(X, y, test_size=0.2, random_state=42)
 
+#Preparing testing data for month 10, 11, 12 seperately
+x_test10 = copy.deepcopy(x_test)
+x_test10['month'] = 10
+
+x_test11 = copy.deepcopy(x_test)
+x_test11['month'] = 11
+
+x_test12 = copy.deepcopy(x_test)
+x_test12['month'] = 12
 #Implement the Xgboost#
+
+print "Printing months of test data"
+
+print x_test10['month']
 
 # We can now select the parameters for Xgboost and monitor the progress of results on our validation set. The explanation of the xgboost parameters and what they do can be found on the following link http://xgboost.readthedocs.io/en/latest/parameter.html #
 
 dtrain = xgb.DMatrix(Xtrain, label=ytrain)
 dvalid = xgb.DMatrix(Xvalid, label=yvalid)
-dtest = xgb.DMatrix(x_test.values)
-print "Length of test data again", dtest.num_row()
+
+dtest10 = xgb.DMatrix(x_test10.values)
+dtest11 = xgb.DMatrix(x_test11.values)
+dtest12 = xgb.DMatrix(x_test12.values)
+print "Length of test data of month 10 again", dtest10.num_row()
+print "Length of test data of month 11 again", dtest11.num_row()
+print "Length of test data of month 12 again", dtest12.num_row()
 
 # Try different parameters!
 xgb_params = {'min_child_weight': 5, 'eta': 0.035, 'colsample_bytree': 0.5, 'max_depth': 4,
@@ -174,15 +196,21 @@ model_xgb = xgb.train(xgb_params, dtrain, 1000, watchlist, early_stopping_rounds
 
 # Let us now predict the target variable for our test dataset. All we have to do now is just fit the already trained model on the test set that we had made merging the sample file with properties dataset #
 
-Predicted_test_xgb = model_xgb.predict(dtest)
+Predicted_test_xgb10 = model_xgb.predict(dtest10)
+Predicted_test_xgb11 = model_xgb.predict(dtest11)
+Predicted_test_xgb12 = model_xgb.predict(dtest12)
 
 #Submitting the Results
 
 #Once again load the file and start submitting the results in each column
 
 sample_file = pd.read_csv('../sample_submission.csv')
-for c in sample_file.columns[sample_file.columns != 'ParcelId']:
-    sample_file[c] = Predicted_test_xgb
+sample_file['201610'] = Predicted_test_xgb10
+sample_file['201611'] = Predicted_test_xgb11
+sample_file['201612'] = Predicted_test_xgb12
+sample_file['201710'] = Predicted_test_xgb10
+sample_file['201711'] = Predicted_test_xgb11
+sample_file['201712'] = Predicted_test_xgb12
 
 print('Preparing the csv file ...')
 sample_file.to_csv('xgb_predicted_results.csv', index=False, float_format='%.4f')
