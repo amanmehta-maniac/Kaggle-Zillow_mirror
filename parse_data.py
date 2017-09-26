@@ -100,10 +100,15 @@ toDrop = set()
 for c in df_train.columns:
     print c
     Empty = df_train[c]
-    countOfEmpty = (Empty==-1).sum()
+    if df_train[c].dtype!='datetime64[ns]':
+    	countOfEmpty = (Empty==-1).sum()
     total = len(Empty)
+<<<<<<< HEAD
     if(count/total >= 0.8):
         print "Dropping It"
+=======
+    if(countOfEmpty/total >= 0.8):
+>>>>>>> a999ef6a6577a45cb6ebab033f6399f23c2fbc46
         toDrop.add(c)
 
 toDrop.add('parcelid')
@@ -126,9 +131,11 @@ toDropList.append('201710')
 toDropList.append('201711')
 toDropList.append('201712')
 toDropList.remove('logerror')
-toDropList.remove('transactiondata')
+toDropList.remove('transactiondate')
 
 x_test = df_test.drop(toDropList, axis = 1)
+print "Number of Items in test data"
+print len(x_test)
 
 x_train = x_train.values
 y_train = df_train['logerror'].values
@@ -151,6 +158,7 @@ Xtrain, Xvalid, ytrain, yvalid = train_test_split(X, y, test_size=0.2, random_st
 dtrain = xgb.DMatrix(Xtrain, label=ytrain)
 dvalid = xgb.DMatrix(Xvalid, label=yvalid)
 dtest = xgb.DMatrix(x_test.values)
+print "Length of test data again", dtest.num_row()
 
 # Try different parameters!
 xgb_params = {'min_child_weight': 5, 'eta': 0.035, 'colsample_bytree': 0.5, 'max_depth': 4,
@@ -172,7 +180,7 @@ Predicted_test_xgb = model_xgb.predict(dtest)
 
 #Once again load the file and start submitting the results in each column
 
-sample_file = pd.read_csv('../input/sample_submission.csv')
+sample_file = pd.read_csv('../sample_submission.csv')
 for c in sample_file.columns[sample_file.columns != 'ParcelId']:
     sample_file[c] = Predicted_test_xgb
 
