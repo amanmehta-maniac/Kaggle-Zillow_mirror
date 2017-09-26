@@ -98,10 +98,12 @@ for c in df_test.columns:
 toDrop = set()
 
 for c in df_train.columns:
+    print c
     Empty = df_train[c]
     countOfEmpty = (Empty==-1).sum()
     total = len(Empty)
     if(count/total >= 0.8):
+        print "Dropping It"
         toDrop.add(c)
 
 toDrop.add('parcelid')
