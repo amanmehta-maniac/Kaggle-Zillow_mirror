@@ -93,8 +93,6 @@ for c in df_test.columns:
         df_test[c] = lbl.transform(list(df_test[c].values))
 
 
-df_train = df_train.replace(-1,0)
-df_test = df_test.replace(-1,0)
 ### Rearranging the DataSets ###
 
 # We will now drop the features that serve no useful purpose. We will also split our data and divide it into the representation to make it clear which features are to be treated as determinants in predicting the outcome for our target feature. Make sure to include the same features in the test set as were included in the training set #
@@ -111,6 +109,8 @@ for c in df_train.columns:
     if(countOfEmpty >= 20000):
         toDrop.add(c)
 
+df_train = df_train.replace(-1,0)
+df_test = df_test.replace(-1,0)
 print "Printing the elements to be dropped"
 for each in toDrop:
     print each
@@ -138,6 +138,19 @@ toDropList.remove('logerror')
 toDropList.remove('transactiondate')
 
 x_test = df_test.drop(toDropList, axis = 1)
+
+count = 0
+for c in x_train.columns:
+    count=count+1
+
+print "Total columns in training:",count
+
+count=0
+for c in x_test.columns:
+    count=count+1
+
+print "Total columns in testing:",count
+
 print "Number of Items in test data"
 print len(x_test)
 
@@ -166,13 +179,11 @@ x_test12 = copy.deepcopy(x_test)
 x_test12['month'] = 12
 #Implement the Xgboost#
 
-print "Printing months of test data"
-
-print x_test10['month']
 
 # We can now select the parameters for Xgboost and monitor the progress of results on our validation set. The explanation of the xgboost parameters and what they do can be found on the following link http://xgboost.readthedocs.io/en/latest/parameter.html #
 
 dtrain = xgb.DMatrix(Xtrain, label=ytrain)
+#dtrain = xgb.DMatrix(X, label=y)
 dvalid = xgb.DMatrix(Xvalid, label=yvalid)
 
 dtest10 = xgb.DMatrix(x_test10.values)
@@ -188,6 +199,8 @@ xgb_params = {'min_child_weight': 5, 'eta': 0.035, 'colsample_bytree': 0.5, 'max
             'eval_metric': 'mae', 'objective': 'reg:linear' }
 
 watchlist = [(dtrain, 'train'), (dvalid, 'valid')]
+#watchlist = [(dtrain,'train')]
+
 
 model_xgb = xgb.train(xgb_params, dtrain, 1000, watchlist, early_stopping_rounds=100,
                   maximize=False, verbose_eval=10)
