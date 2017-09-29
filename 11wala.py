@@ -46,53 +46,25 @@ def load_data():
             dum_df = dum_df.rename(columns=lambda x:c+str(x))
             properties = pd.concat([properties,dum_df],axis=1)
 
-    properties['N-LivingAreaError'] = properties['calculatedfinishedsquarefeet'] / properties[
-        'finishedsquarefeet12']
     # proportion of living area
 
     properties['N-LivingAreaProp'] = properties['calculatedfinishedsquarefeet'] / properties[
         'lotsizesquarefeet']
-    properties['N-LivingAreaProp2'] = properties['finishedsquarefeet12'] / properties[
-        'finishedsquarefeet15']
     # Total number of rooms
-    properties['N-TotalRooms'] = properties['bathroomcnt'] + properties['bedroomcnt']
 
     # Ratio of tax of property over parcel
     properties['N-ValueRatio'] = properties['taxvaluedollarcnt'] / properties['taxamount']
 
     # TotalTaxScore
-    properties['N-TaxScore'] = properties['taxvaluedollarcnt'] * properties['taxamount']
-
-    # Number of Extra rooms
-    properties['N-ExtraRooms'] = properties['roomcnt'] - properties['N-TotalRooms']
 
     # Ratio of the built structure value to land area
     properties['N-ValueProp'] = properties['structuretaxvaluedollarcnt'] / properties[
         'landtaxvaluedollarcnt']
 
     # Does property have a garage, pool or hot tub and AC?
-    properties['N-GarPoolAC'] = ((properties['garagecarcnt'] > 0) & (properties['pooltypeid10'] > 0) & (
-        properties['airconditioningtypeid'] != 5)) * 1
 
     #dataframe["N-location"] = dataframe["latitude"] + dataframe["longitude"]
-    properties["N-location-2"] = properties["latitude"] * properties["longitude"]
-    properties["N-location-2round"] = properties["N-location-2"].round(-4)
-
-    #dataframe["N-latitude-round"] = dataframe["latitude"].round(-4)
-    #dataframe["N-longitude-round"] = dataframe["longitude"].round(-4)
-
-    # Ratio of tax of property over parcel
-    properties['N-ValueRatio'] = properties['taxvaluedollarcnt'] / properties['taxamount']
-
-    # TotalTaxScore
     properties['N-TaxScore'] = properties['taxvaluedollarcnt'] * properties['taxamount']
-
-    # polnomials of tax delinquency year
-    properties["N-taxdelinquencyyear-2"] = properties["taxdelinquencyyear"] ** 2
-    properties["N-taxdelinquencyyear-3"] = properties["taxdelinquencyyear"] ** 3
-
-    # Length of time since unpaid taxes
-    properties['N-life'] = 2018 - properties['taxdelinquencyyear']
 
     # Number of properties in the zip
     zip_count = properties['regionidzip'].value_counts().to_dict()
@@ -103,18 +75,8 @@ def load_data():
     properties['N-city_count'] = properties['regionidcity'].map(city_count)
 
     # Number of properties in the city
-    region_count = properties['regionidcounty'].value_counts().to_dict()
-    properties['N-county_count'] = properties['regionidcounty'].map(region_count)
 
     # Indicator whether it has AC or not
-    properties['N-ACInd'] = (properties['airconditioningtypeid'] != 5) * 1
-
-    # Indicator whether it has Heating or not
-    properties['N-HeatInd'] = (properties['heatingorsystemtypeid'] != 13) * 1
-
-    # polnomials of the variable
-    properties["N-structuretaxvaluedollarcnt-2"] = properties["structuretaxvaluedollarcnt"] ** 2
-    #dataframe["N-structuretaxvaluedollarcnt-3"] = dataframe["structuretaxvaluedollarcnt"] ** 3
 
     # Average structuretaxvaluedollarcnt by city
     group = properties.groupby('regionidcity')['structuretaxvaluedollarcnt'].aggregate('mean').to_dict()
@@ -222,13 +184,18 @@ class Ensemble(object):
 
 x_train, y_train, x_test_10 = load_data()
 
+# rf params
+rf_params = {}
+rf_params['n_estimators'] = 50
+rf_params['max_depth'] = 8
+rf_params['min_samples_split'] = 100
+rf_params['min_samples_leaf'] = 30
+
 # xgb params
 xgb_params = {}
-#xgb_params['objective'] = 'reg:linear'
-#xgb_params['eval_metric'] = 'mae'
-xgb_params['n_estimators'] = 250
+xgb_params['n_estimators'] = 50
 xgb_params['min_child_weight'] = 12
-xgb_params['learning_rate'] = 0.37
+xgb_params['learning_rate'] = 0.27
 xgb_params['max_depth'] = 6
 xgb_params['subsample'] = 0.77
 xgb_params['reg_lambda'] = 0.8
@@ -237,15 +204,29 @@ xgb_params['base_score'] = 0
 #xgb_params['seed'] = 400
 xgb_params['silent'] = 1
 
-# rf params
-rf_params = {}
+
+# lgb params
+lgb_params = {}
+lgb_params['n_estimators'] = 50
+lgb_params['max_bin'] = 10
+lgb_params['learning_rate'] = 0.321 # shrinkage_rate
+lgb_params['metric'] = 'l1'          # or 'mae'
+lgb_params['sub_feature'] = 0.34
+lgb_params['bagging_fraction'] = 0.85 # sub_row
+lgb_params['bagging_freq'] = 40
+lgb_params['num_leaves'] = 512        # num_leaf
+lgb_params['min_data'] = 500         # min_data_in_leaf
+lgb_params['min_hessian'] = 0.05     # min_sum_hessian_in_leaf
+lgb_params['verbose'] = 0
+lgb_params['feature_fraction_seed'] = 2
+lgb_params['bagging_seed'] = 3
 
 
 # XGB model
 xgb_model = XGBRegressor(**xgb_params)
 
 # lgb model
-lgb_model = LGBMRegressor()
+lgb_model = LGBMRegressor(**lgb_params)
 
 # RF model
 rf_model = RandomForestRegressor(**rf_params)
@@ -262,6 +243,7 @@ dt_model = DecisionTreeRegressor()
 
 # AdaBoost model
 ada_model = AdaBoostRegressor()
+
 print("aag ya")
 stack = Ensemble(n_splits=5,
         stacker=LinearRegression(),
