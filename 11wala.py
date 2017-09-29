@@ -46,49 +46,23 @@ def load_data():
             dum_df = dum_df.rename(columns=lambda x:c+str(x))
             properties = pd.concat([properties,dum_df],axis=1)
 
-    # proportion of living area
-
+    print("Feature Engg")
     properties['N-LivingAreaProp'] = properties['calculatedfinishedsquarefeet'] / properties[
         'lotsizesquarefeet']
-    # Total number of rooms
-
-    # Ratio of tax of property over parcel
     properties['N-ValueRatio'] = properties['taxvaluedollarcnt'] / properties['taxamount']
-
-    # TotalTaxScore
-
-    # Ratio of the built structure value to land area
     properties['N-ValueProp'] = properties['structuretaxvaluedollarcnt'] / properties[
         'landtaxvaluedollarcnt']
-
-    # Does property have a garage, pool or hot tub and AC?
-
-    #dataframe["N-location"] = dataframe["latitude"] + dataframe["longitude"]
     properties['N-TaxScore'] = properties['taxvaluedollarcnt'] * properties['taxamount']
-
-    # Number of properties in the zip
     zip_count = properties['regionidzip'].value_counts().to_dict()
     properties['N-zip_count'] = properties['regionidzip'].map(zip_count)
-
-    # Number of properties in the city
     city_count = properties['regionidcity'].value_counts().to_dict()
     properties['N-city_count'] = properties['regionidcity'].map(city_count)
-
-    # Number of properties in the city
-
-    # Indicator whether it has AC or not
-
-    # Average structuretaxvaluedollarcnt by city
     group = properties.groupby('regionidcity')['structuretaxvaluedollarcnt'].aggregate('mean').to_dict()
     properties['N-Avg-structuretaxvaluedollarcnt'] = properties['regionidcity'].map(group)
-
-    # Deviation away from average
     properties['N-Dev-structuretaxvaluedollarcnt'] = abs(
         (properties['structuretaxvaluedollarcnt'] - properties['N-Avg-structuretaxvaluedollarcnt'])) / properties[
                                                        'N-Avg-structuretaxvaluedollarcnt']
-        #
-    # Make train and test dataframe
-    #
+    
     train = train.merge(properties, on='parcelid', how='left')
     sample['parcelid'] = sample['ParcelId']
     test = sample.merge(properties, on='parcelid', how='left')
@@ -103,15 +77,17 @@ def load_data():
     x_train = train.drop(['parcelid', 'logerror','transactiondate', 'propertyzoningdesc', 'propertycountylandusecode'], axis=1)
     y_train = train["logerror"].values
 
+    print("Dropping")
     toDrop = []
     for c in x_train.columns:
-        if (x_trains[c]==-1).sum()>70000:
+        if (x_train[c]==-1).sum()>70000:
             toDrop.append(c)
 
+    print(toDrop)
     x_train = x_train.drop(toDrop,axis=1)
     test_10 = copy.deepcopy(test)
 
-    test_10["Month"] = 10
+    test_10["Month"] = 11
 
     x_test_10 = test_10[x_train.columns]
 
