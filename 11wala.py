@@ -23,12 +23,12 @@ def load_data():
     train = pd.read_csv('../train_2016_v2.csv')
     properties = pd.read_csv('../properties_2016.csv')
     sample = pd.read_csv('../sample_submission.csv')
-    
+
     print("Preprocessing...")
     for c, dtype in zip(properties.columns, properties.dtypes):
         if dtype == np.float64:
             properties[c] = properties[c].astype(np.float32)
-            
+
     print("Set train/test data...")
     id_feature = ['heatingorsystemtypeid','propertylandusetypeid', 'storytypeid', 'airconditioningtypeid',
         'architecturalstyletypeid', 'buildingclasstypeid', 'buildingqualitytypeid', 'typeconstructiontypeid']
@@ -45,6 +45,85 @@ def load_data():
             dum_df = pd.get_dummies(properties[c])
             dum_df = dum_df.rename(columns=lambda x:c+str(x))
             properties = pd.concat([properties,dum_df],axis=1)
+
+    properties['N-LivingAreaError'] = properties['calculatedfinishedsquarefeet'] / properties[
+        'finishedsquarefeet12']
+    # proportion of living area
+
+    properties['N-LivingAreaProp'] = properties['calculatedfinishedsquarefeet'] / properties[
+        'lotsizesquarefeet']
+    properties['N-LivingAreaProp2'] = properties['finishedsquarefeet12'] / properties[
+        'finishedsquarefeet15']
+    # Total number of rooms
+    properties['N-TotalRooms'] = properties['bathroomcnt'] + properties['bedroomcnt']
+
+    # Ratio of tax of property over parcel
+    properties['N-ValueRatio'] = properties['taxvaluedollarcnt'] / properties['taxamount']
+
+    # TotalTaxScore
+    properties['N-TaxScore'] = properties['taxvaluedollarcnt'] * properties['taxamount']
+
+    # Number of Extra rooms
+    properties['N-ExtraRooms'] = properties['roomcnt'] - properties['N-TotalRooms']
+
+    # Ratio of the built structure value to land area
+    properties['N-ValueProp'] = properties['structuretaxvaluedollarcnt'] / properties[
+        'landtaxvaluedollarcnt']
+
+    # Does property have a garage, pool or hot tub and AC?
+    properties['N-GarPoolAC'] = ((properties['garagecarcnt'] > 0) & (properties['pooltypeid10'] > 0) & (
+        properties['airconditioningtypeid'] != 5)) * 1
+
+    #dataframe["N-location"] = dataframe["latitude"] + dataframe["longitude"]
+    properties["N-location-2"] = properties["latitude"] * properties["longitude"]
+    properties["N-location-2round"] = properties["N-location-2"].round(-4)
+
+    #dataframe["N-latitude-round"] = dataframe["latitude"].round(-4)
+    #dataframe["N-longitude-round"] = dataframe["longitude"].round(-4)
+
+    # Ratio of tax of property over parcel
+    properties['N-ValueRatio'] = properties['taxvaluedollarcnt'] / properties['taxamount']
+
+    # TotalTaxScore
+    properties['N-TaxScore'] = properties['taxvaluedollarcnt'] * properties['taxamount']
+
+    # polnomials of tax delinquency year
+    properties["N-taxdelinquencyyear-2"] = properties["taxdelinquencyyear"] ** 2
+    properties["N-taxdelinquencyyear-3"] = properties["taxdelinquencyyear"] ** 3
+
+    # Length of time since unpaid taxes
+    properties['N-life'] = 2018 - properties['taxdelinquencyyear']
+
+    # Number of properties in the zip
+    zip_count = properties['regionidzip'].value_counts().to_dict()
+    properties['N-zip_count'] = properties['regionidzip'].map(zip_count)
+
+    # Number of properties in the city
+    city_count = properties['regionidcity'].value_counts().to_dict()
+    properties['N-city_count'] = properties['regionidcity'].map(city_count)
+
+    # Number of properties in the city
+    region_count = properties['regionidcounty'].value_counts().to_dict()
+    properties['N-county_count'] = properties['regionidcounty'].map(region_count)
+
+    # Indicator whether it has AC or not
+    properties['N-ACInd'] = (properties['airconditioningtypeid'] != 5) * 1
+
+    # Indicator whether it has Heating or not
+    properties['N-HeatInd'] = (properties['heatingorsystemtypeid'] != 13) * 1
+
+    # polnomials of the variable
+    properties["N-structuretaxvaluedollarcnt-2"] = properties["structuretaxvaluedollarcnt"] ** 2
+    #dataframe["N-structuretaxvaluedollarcnt-3"] = dataframe["structuretaxvaluedollarcnt"] ** 3
+
+    # Average structuretaxvaluedollarcnt by city
+    group = properties.groupby('regionidcity')['structuretaxvaluedollarcnt'].aggregate('mean').to_dict()
+    properties['N-Avg-structuretaxvaluedollarcnt'] = properties['regionidcity'].map(group)
+
+    # Deviation away from average
+    properties['N-Dev-structuretaxvaluedollarcnt'] = abs(
+        (properties['structuretaxvaluedollarcnt'] - properties['N-Avg-structuretaxvaluedollarcnt'])) / properties[
+                                                       'N-Avg-structuretaxvaluedollarcnt']
         #
     # Make train and test dataframe
     #
@@ -61,19 +140,21 @@ def load_data():
 
     x_train = train.drop(['parcelid', 'logerror','transactiondate', 'propertyzoningdesc', 'propertycountylandusecode'], axis=1)
     y_train = train["logerror"].values
-   
- 
+
+    toDrop = []
+    for c in x_train.columns:
+        if (x_trains[c]==-1).sum()>70000:
+            toDrop.append(c)
+
+    x_train = x_train.drop(toDrop,axis=1)
     test_10 = copy.deepcopy(test)
-    # test_11 = copy.deepcopy(test)
-    # test_12 = copy.deepcopy(test)
+
     test_10["Month"] = 10
-    # test_11["Month"] = 11
-    # test_12["Month"] = 12
+
     x_test_10 = test_10[x_train.columns]
-    # x_test_11 = test_11[x_train.columns]
-    # x_test_12 = test_12[x_train.columns]
-    del train, test   
-    
+
+    del train, test
+
     return x_train, y_train, x_test_10
 
 
@@ -91,12 +172,10 @@ class Ensemble(object):
         T = np.array(T)
         # T[1] = np.array(T[1])
         # T[2] = np.array(T[2])
-        
-        
-        
+
         print("yaha to aa gya")
         folds = list(KFold(n_splits=self.n_splits, shuffle=True, random_state=2016).split(X, y))
-        
+
         S_train = np.zeros((X.shape[0], len(self.base_models)))
         S_test_10 = np.zeros((T.shape[0], len(self.base_models)))
         # S_test_11 = np.zeros((T2.shape[0], len(self.base_models)))
@@ -114,7 +193,7 @@ class Ensemble(object):
                 y_holdout = y[test_idx]
                 print ("Fit Model %d fold %d" % (i, j))
                 clf.fit(X_train, y_train)
-                y_pred = clf.predict(X_holdout)[:]                
+                y_pred = clf.predict(X_holdout)[:]
 
                 S_train[test_idx, i] = y_pred
                 S_test_i_10[:, j] = clf.predict(T)[:]
@@ -138,7 +217,7 @@ class Ensemble(object):
         # print("predicting for 12")
         # res3 = self.stacker.predict(S_test_12)[:]
         # del S_test_10,S_test_11,S_test_12
-            
+
         return res
 
 x_train, y_train, x_test_10 = load_data()
