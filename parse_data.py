@@ -17,6 +17,7 @@ properties = pd.read_csv('../properties_2016.csv')
 test = pd.read_csv('../sample_submission.csv')
 test= test.rename(columns={'ParcelId': 'parcelid'}) #To make it easier for merging datasets on same column_id later
 
+print train, test
 # Analyse the Dimensions of our Datasets.
 
 print("Training Size:" + str(train.shape))
@@ -95,6 +96,9 @@ for c in df_test.columns:
 
 ### Rearranging the DataSets ###
 
+
+print "sdjfaksd\n" ,  df_test
+print "shdfasdl\n", df_train
 # We will now drop the features that serve no useful purpose. We will also split our data and divide it into the representation to make it clear which features are to be treated as determinants in predicting the outcome for our target feature. Make sure to include the same features in the test set as were included in the training set #
 
 toDrop = set()
@@ -165,6 +169,7 @@ from sklearn.model_selection import train_test_split
 
 X = x_train
 y = y_train
+print x_test
 
 Xtrain, Xvalid, ytrain, yvalid = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -186,6 +191,8 @@ dtrain = xgb.DMatrix(Xtrain, label=ytrain)
 #dtrain = xgb.DMatrix(X, label=y)
 dvalid = xgb.DMatrix(Xvalid, label=yvalid)
 
+print x_test10
+print x_test10.values
 dtest10 = xgb.DMatrix(x_test10.values)
 dtest11 = xgb.DMatrix(x_test11.values)
 dtest12 = xgb.DMatrix(x_test12.values)

@@ -1,4 +1,5 @@
  #Importing Libraries or Packages that are needed throughout the Program
+
 import numpy as np
 import pandas as pd
 import random
@@ -159,6 +160,53 @@ class Ensemble(object):
         return res
 
 x_train, y_train, x_test_10 = load_data()
+
+
+
+### NN ###
+# Neural Network
+len_x = int(x_train.shape[1])
+
+print("\nSetting up neural network model...")
+nn = Sequential()
+nn.add(Dense(units = 400 , kernel_initializer = 'normal', input_dim = len_x))
+nn.add(PReLU())
+nn.add(Dropout(.4))
+nn.add(Dense(units = 160 , kernel_initializer = 'normal'))
+nn.add(PReLU())
+nn.add(BatchNormalization())
+nn.add(Dropout(.6))
+nn.add(Dense(units = 64 , kernel_initializer = 'normal'))
+nn.add(PReLU())
+nn.add(BatchNormalization())
+nn.add(Dropout(.5))
+nn.add(Dense(units = 26, kernel_initializer = 'normal'))
+nn.add(PReLU())
+nn.add(BatchNormalization())
+nn.add(Dropout(.6))
+nn.add(Dense(1, kernel_initializer='normal'))
+nn.compile(loss='mae', optimizer=Adam(lr=4e-3, decay=1e-4))
+
+print("\nFitting neural network model...")
+nn.fit(np.array(x_train), np.array(y_train), batch_size = 32, epochs = 70, verbose=2)
+
+print("\nPredicting with neural network model...")
+#print("x_test.shape:",x_test.shape)
+y_pred_ann = nn.predict(x_test)
+
+print( "\nPreparing results for write..." )
+nn_pred = y_pred_ann.flatten()
+print( "Type of nn_pred is ", type(nn_pred) )
+print( "Shape of nn_pred is ", nn_pred.shape )
+
+print( "\nNeural Network predictions:" )
+print( pd.DataFrame(nn_pred).head() )
+
+
+
+
+
+
 
 # rf params
 rf_params = {}
